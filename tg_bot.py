@@ -8,8 +8,7 @@ from telegram.ext import (CallbackQueryHandler, CommandHandler, Filters,
 
 from moltin import (add_product_to_cart, create_customer,
                     delete_item_from_cart, get_cart, get_cart_items,
-                    get_cart_sum, get_photo_url, get_product, get_products,
-                    get_store_token)
+                    get_cart_sum, get_photo_url, get_product, get_products)
 
 COUNT_PLACEHOLDER = "_count_"
 
@@ -28,7 +27,7 @@ def keyboard_maker(buttons, number):
 
 def start(bot, update, **kwargs):
     text = "Покупай и точка!"
-    products = get_products(kwargs["store_token"])
+    products = get_products()
     keyboard = keyboard_maker(products, 1)
     keyboard.append([InlineKeyboardButton("Корзина", callback_data="cart")])
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -36,10 +35,10 @@ def start(bot, update, **kwargs):
     return "HANDLE_MENU"
 
 
-def show_cart(bot, update, store_token, chat_id, db):
-    cart_id = get_cart(store_token, chat_id, db)
-    cart_items = get_cart_items(store_token, cart_id)
-    cart_sum = get_cart_sum(store_token, cart_id)
+def show_cart(bot, update, chat_id, db):
+    cart_id = get_cart(chat_id, db)
+    cart_items = get_cart_items(cart_id)
+    cart_sum = get_cart_sum(cart_id)
     cart_text = "\n".join(
         [
             f"""Товар: {item['name']}
@@ -72,16 +71,14 @@ def handle_menu(bot, update, **kwargs):
     )
 
     if query.data == "cart":
-        return show_cart(
-            bot, update, kwargs["store_token"], query.message.chat_id, kwargs["db"]
-        )
+        return show_cart(bot, update, query.message.chat_id, kwargs["db"])
 
     product_id = query.data
-    info, img_id = get_product(kwargs["store_token"], product_id)
+    info, img_id = get_product(product_id)
 
     keyboard = []
     if img_id:
-        photo_url = get_photo_url(kwargs["store_token"], img_id)
+        photo_url = get_photo_url(img_id)
         keyboard.append(
             [
                 InlineKeyboardButton(
@@ -114,13 +111,11 @@ def handle_description(bot, update, **kwargs):
     chat_id = query.message.chat_id
     if query.data == "back":
         bot.delete_message(chat_id=chat_id, message_id=query.message.message_id)
-        return start(bot, update, **kwargs)
+        return start(bot, update)
 
     elif COUNT_PLACEHOLDER in query.data:
         product_id, count = query.data.split(COUNT_PLACEHOLDER)
-        cart = add_product_to_cart(
-            kwargs["store_token"], product_id, int(count), chat_id, kwargs["db"]
-        )
+        cart = add_product_to_cart(product_id, int(count), chat_id, kwargs["db"])
     return "HANDLE_DESCRIPTION"
 
 
@@ -130,31 +125,30 @@ def handle_cart(bot, update, **kwargs):
     chat_id = query.message.chat_id
     bot.delete_message(chat_id=chat_id, message_id=query.message.message_id)
     if query.data == "menu":
-        return start(bot, update, **kwargs)
+        return start(bot, update)
     elif query.data == "pay":
         text = "Пришлите Вашу почту, мы с Вами свяжемся"
         update.effective_user.send_message(text)
         return "WAITING_EMAIL"
     else:
         item_id = query.data
-        store_token = kwargs["store_token"]
         db = kwargs["db"]
-        cart_id = get_cart(store_token, chat_id, db)
-        delete_item_from_cart(store_token, cart_id, item_id)
-        return show_cart(bot, update, store_token, chat_id, db)
+        cart_id = get_cart(chat_id, db)
+        delete_item_from_cart(cart_id, item_id)
+        return show_cart(bot, update, chat_id, db)
 
 
-def waiting_email(bot, update, **kwargs):
+def waiting_email(bot, update):
     user_email = update.message.text
     user_name = f"{update.message.chat.first_name} {update.message.chat.last_name}"
-    customer_id = create_customer(kwargs["store_token"], user_name, user_email)
+    customer_id = create_customer(user_name, user_email)
     update.effective_user.send_message(
         f"Мы свяжемся с вами по этому адресу: {user_email}"
     )
     return "WAITING_EMAIL"
 
 
-def handle_users_reply(db, store_token, bot, update):
+def handle_users_reply(db, bot, update):
     if update.message:
         user_reply = update.message.text
         chat_id = update.message.chat_id
@@ -177,7 +171,7 @@ def handle_users_reply(db, store_token, bot, update):
     }
     state_handler = states_functions[user_state]
     try:
-        next_state = state_handler(bot, update, store_token=store_token, db=db)
+        next_state = state_handler(bot, update, db=db)
         db.set(chat_id, next_state)
     except Exception as err:
         print(err)
@@ -189,10 +183,6 @@ if __name__ == "__main__":
 
     bot_token = env.str("TELEGRAM_BOT_TOKEN")
 
-    client_id = env.str("CLIENT_ID")
-    client_secret = env.str("CLIENT_SECRET")
-    moltin_token = get_store_token(client_id, client_secret)
-
     REDIS_URL = env.str("REDIS_URL")
     REDIS_PORT = env.str("REDIS_PORT")
     REDIS_PASS = env.str("REDIS_PASS")
@@ -201,14 +191,12 @@ if __name__ == "__main__":
     updater = Updater(bot_token)
     dispatcher = updater.dispatcher
     dispatcher.add_handler(
-        CallbackQueryHandler(partial(handle_users_reply, redis_conn, moltin_token))
+        CallbackQueryHandler(partial(handle_users_reply, redis_conn))
     )
     dispatcher.add_handler(
-        MessageHandler(
-            Filters.text, partial(handle_users_reply, redis_conn, moltin_token)
-        )
+        MessageHandler(Filters.text, partial(handle_users_reply, redis_conn))
     )
     dispatcher.add_handler(
-        CommandHandler("start", partial(handle_users_reply, redis_conn, moltin_token))
+        CommandHandler("start", partial(handle_users_reply, redis_conn))
     )
     updater.start_polling()

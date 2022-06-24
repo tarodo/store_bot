@@ -1,12 +1,15 @@
+from datetime import datetime, timedelta
+
 import requests
+from environs import Env
 
+env = Env()
+env.read_env()
 CART_PREFIX = "cart_"
-
-
-def get_headers(store_token):
-    return {
-        "Authorization": f"Bearer {store_token}",
-    }
+CLIENT_ID = env.str("CLIENT_ID")
+CLIENT_SECRET = env.str("CLIENT_SECRET")
+TOKEN_EXPIRES = datetime.now()
+TOKEN_STORE = ""
 
 
 def get_store_token(client_id, client_secret):
@@ -15,16 +18,26 @@ def get_store_token(client_id, client_secret):
         "client_secret": client_secret,
         "grant_type": "client_credentials",
     }
-
     response = requests.post("https://api.moltin.com/oauth/access_token", data=data)
     response.raise_for_status()
+    token = response.json()
+    return token["access_token"], token["expires_in"]
 
-    return response.json()["access_token"]
+
+def get_headers():
+    global TOKEN_EXPIRES
+    global TOKEN_STORE
+    if datetime.now() >= TOKEN_EXPIRES:
+        TOKEN_STORE, expires = get_store_token(CLIENT_ID, CLIENT_SECRET)
+        TOKEN_EXPIRES = datetime.now() + timedelta(seconds=expires - 100)
+    return {
+        "Authorization": f"Bearer {TOKEN_STORE}",
+    }
 
 
-def get_products(store_token):
+def get_products():
     products = []
-    headers = get_headers(store_token)
+    headers = get_headers()
     response = requests.get(f"https://api.moltin.com/v2/products", headers=headers)
     response.raise_for_status()
     for elem in response.json()["data"]:
@@ -32,8 +45,8 @@ def get_products(store_token):
     return products
 
 
-def get_product(store_token, product_id):
-    headers = get_headers(store_token)
+def get_product(product_id):
+    headers = get_headers()
     response = requests.get(
         f"https://api.moltin.com/v2/products/{product_id}", headers=headers
     )
@@ -45,8 +58,8 @@ def get_product(store_token, product_id):
     return product_info, img_id
 
 
-def get_photo_url(store_token, img_id):
-    headers = get_headers(store_token)
+def get_photo_url(img_id):
+    headers = get_headers()
     response = requests.get(
         f"https://api.moltin.com/v2/files/{img_id}", headers=headers
     )
@@ -54,8 +67,8 @@ def get_photo_url(store_token, img_id):
     return response.json()["data"]["link"]["href"]
 
 
-def create_cart(store_token, chat_id):
-    headers = get_headers(store_token)
+def create_cart(chat_id):
+    headers = get_headers()
     data = {"data": {"name": str(chat_id)}}
     response = requests.post(
         "https://api.moltin.com/v2/carts", json=data, headers=headers
@@ -64,10 +77,10 @@ def create_cart(store_token, chat_id):
     return response.json()["data"]["id"]
 
 
-def get_cart(store_token, chat_id, db):
+def get_cart(chat_id, db):
     cart_id = db.get(f"{CART_PREFIX}{chat_id}")
     if not cart_id:
-        cart_id = create_cart(store_token, chat_id)
+        cart_id = create_cart(chat_id)
         db.set(f"{CART_PREFIX}{chat_id}", cart_id)
     else:
         cart_id = cart_id.decode("utf-8")
@@ -89,9 +102,9 @@ def get_cart_info(cart):
     ]
 
 
-def add_product_to_cart(store_token, product_id, count, chat_id, db):
-    headers = get_headers(store_token)
-    cart_id = get_cart(store_token, chat_id, db)
+def add_product_to_cart(product_id, count, chat_id, db):
+    headers = get_headers()
+    cart_id = get_cart(chat_id, db)
     data = {"data": {"id": product_id, "type": "cart_item", "quantity": count}}
     response = requests.post(
         f"https://api.moltin.com/v2/carts/{cart_id}/items", json=data, headers=headers
@@ -101,8 +114,8 @@ def add_product_to_cart(store_token, product_id, count, chat_id, db):
         return get_cart_info(response.json())
 
 
-def get_cart_items(store_token, cart_id):
-    headers = get_headers(store_token)
+def get_cart_items(cart_id):
+    headers = get_headers()
     response = requests.get(
         f"https://api.moltin.com/v2/carts/{cart_id}/items", headers=headers
     )
@@ -110,8 +123,8 @@ def get_cart_items(store_token, cart_id):
     return get_cart_info(response.json())
 
 
-def get_cart_sum(store_token, cart_id):
-    headers = get_headers(store_token)
+def get_cart_sum(cart_id):
+    headers = get_headers()
     response = requests.get(
         f"https://api.moltin.com/v2/carts/{cart_id}", headers=headers
     )
@@ -119,8 +132,8 @@ def get_cart_sum(store_token, cart_id):
     return response.json()["data"]["meta"]["display_price"]["with_tax"]["formatted"]
 
 
-def delete_item_from_cart(store_token, cart_id, item_id):
-    headers = get_headers(store_token)
+def delete_item_from_cart(cart_id, item_id):
+    headers = get_headers()
     response = requests.delete(
         f"https://api.moltin.com/v2/carts/{cart_id}/items/{item_id}", headers=headers
     )
@@ -128,8 +141,8 @@ def delete_item_from_cart(store_token, cart_id, item_id):
     return True
 
 
-def create_customer(store_token, user_name, user_email):
-    headers = get_headers(store_token)
+def create_customer(user_name, user_email):
+    headers = get_headers()
     data = {"data": {"type": "customer", "name": user_name, "email": user_email}}
     response = requests.post(
         f"https://api.moltin.com/v2/customers", headers=headers, json=data
