@@ -17,6 +17,7 @@ def get_store_token():
     }
 
     response = requests.post("https://api.moltin.com/oauth/access_token", data=data)
+    response.raise_for_status()
 
     return response.json()["access_token"]
 
