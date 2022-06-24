@@ -188,7 +188,10 @@ if __name__ == "__main__":
     env.read_env()
 
     bot_token = env.str("TELEGRAM_BOT_TOKEN")
-    moltin_token = get_store_token()
+
+    client_id = env.str("CLIENT_ID")
+    client_secret = env.str("CLIENT_SECRET")
+    moltin_token = get_store_token(client_id, client_secret)
 
     REDIS_URL = env.str("REDIS_URL")
     REDIS_PORT = env.str("REDIS_PORT")

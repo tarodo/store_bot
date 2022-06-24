@@ -9,10 +9,10 @@ def get_headers(store_token):
     }
 
 
-def get_store_token():
+def get_store_token(client_id, client_secret):
     data = {
-        "client_id": "lLnAy1hG6T0YcBypZXT9Dlg6D6LQBHtORHaqv1gC1z",
-        "client_secret": "DGMMqrh2QLWPLuyZku01U0RC37qMh0l4VUfWZBL2Yg",
+        "client_id": client_id,
+        "client_secret": client_secret,
         "grant_type": "client_credentials",
     }
 
