@@ -42,10 +42,10 @@ def show_cart(bot, update, store_token, chat_id, db):
     cart_sum = get_cart_sum(store_token, cart_id)
     cart_text = "\n".join(
         [
-            f"Товар: {item['name']}\n"
-            f"Цена: {item['price']}\n"
-            f"Количество {item['qty']}\n"
-            f"Сумма: {item['value']}\n"
+            f"""Товар: {item['name']}
+Цена: {item['price']}
+Количество {item['qty']}
+Сумма: {item['value']}"""
             for item in cart_items
         ]
     )
