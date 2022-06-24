@@ -11,16 +11,13 @@ COUNT_PLACEHOLDER = "_count_"
 CART_PREFIX = "cart_"
 
 
-def button_maker(buttons, chunks_number):
-    for num in range(0, len(buttons), chunks_number):
-        yield [
-            InlineKeyboardButton(button["name"], callback_data=button["id"])
-            for button in buttons[num : num + chunks_number]
-        ]
-
-
 def keyboard_maker(buttons, number):
-    keyboard = list(button_maker(buttons, number))
+    keyboard = []
+    for num in range(0, len(buttons), number):
+        keyboard.append([
+            InlineKeyboardButton(button["name"], callback_data=button["id"])
+            for button in buttons[num: num + number]
+        ])
     return keyboard
 
 
