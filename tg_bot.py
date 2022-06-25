@@ -1,13 +1,11 @@
 from functools import partial
+from textwrap import dedent
 
 import redis
 from environs import Env
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (CallbackQueryHandler, CommandHandler, Filters,
                           MessageHandler, Updater)
-
-env = Env()
-env.read_env()
 
 from moltin import (add_product_to_cart, create_customer,
                     delete_item_from_cart, get_cart, get_cart_items,
@@ -22,7 +20,7 @@ def keyboard_maker(buttons, number):
         keyboard.append(
             [
                 InlineKeyboardButton(button["name"], callback_data=button["id"])
-                for button in buttons[num: num + number]
+                for button in buttons[num : num + number]
             ]
         )
     return keyboard
@@ -44,10 +42,11 @@ def show_cart(bot, update, chat_id, db):
     cart_sum = get_cart_sum(cart_id)
     cart_text = "\n".join(
         [
-            f"""Товар: {item['name']}
-Цена: {item['price']}
-Количество {item['qty']}
-Сумма: {item['value']}"""
+            f"""\
+            Товар: {item['name']}
+            Цена: {item['price']}
+            Количество {item['qty']}
+            Сумма: {item['value']}"""
             for item in cart_items
         ]
     )
@@ -61,6 +60,7 @@ def show_cart(bot, update, chat_id, db):
         keyboard.append(keyboard_items[0])
     keyboard.append([InlineKeyboardButton("В Меню", callback_data="menu")])
     reply_markup = InlineKeyboardMarkup(keyboard)
+    cart_text = dedent(cart_text)
     update.effective_user.send_message(cart_text, reply_markup=reply_markup)
     return "HANDLE_CART"
 
@@ -141,7 +141,7 @@ def handle_cart(bot, update, **kwargs):
         return show_cart(bot, update, chat_id, db)
 
 
-def waiting_email(bot, update):
+def waiting_email(bot, update, **kwargs):
     user_email = update.message.text
     user_name = f"{update.message.chat.first_name} {update.message.chat.last_name}"
     customer_id = create_customer(user_name, user_email)
@@ -181,6 +181,9 @@ def handle_users_reply(db, bot, update):
 
 
 if __name__ == "__main__":
+    env = Env()
+    env.read_env()
+
     bot_token = env.str("TELEGRAM_BOT_TOKEN")
 
     REDIS_URL = env.str("REDIS_URL")
