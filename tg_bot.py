@@ -50,6 +50,8 @@ def show_cart(bot, update, chat_id, db):
             for item in cart_items
         ]
     )
+    cart_text = dedent(cart_text)
+
     cart_text += f"\nИтог: {cart_sum}"
     buttons = [
         {"name": f'Удалить {item["name"]}', "id": item["id"]} for item in cart_items
@@ -60,7 +62,6 @@ def show_cart(bot, update, chat_id, db):
         keyboard.append(keyboard_items[0])
     keyboard.append([InlineKeyboardButton("В Меню", callback_data="menu")])
     reply_markup = InlineKeyboardMarkup(keyboard)
-    cart_text = dedent(cart_text)
     update.effective_user.send_message(cart_text, reply_markup=reply_markup)
     return "HANDLE_CART"
 
