@@ -7,7 +7,7 @@ CART_PREFIX = "cart_"
 
 
 TOKEN_EXPIRES = datetime.now()
-TOKEN_STORE = ""
+STORE_TOKEN = ""
 
 
 def get_store_token(client_id, client_secret):
@@ -28,12 +28,12 @@ def get_headers():
     CLIENT_ID = env.str("CLIENT_ID")
     CLIENT_SECRET = env.str("CLIENT_SECRET")
     global TOKEN_EXPIRES
-    global TOKEN_STORE
+    global STORE_TOKEN
     if datetime.now() >= TOKEN_EXPIRES:
-        TOKEN_STORE, expires = get_store_token(CLIENT_ID, CLIENT_SECRET)
+        STORE_TOKEN, expires = get_store_token(CLIENT_ID, CLIENT_SECRET)
         TOKEN_EXPIRES = datetime.now() + timedelta(seconds=expires - 100)
     return {
-        "Authorization": f"Bearer {TOKEN_STORE}",
+        "Authorization": f"Bearer {STORE_TOKEN}",
     }
 
 
