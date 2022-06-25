@@ -3,11 +3,9 @@ from datetime import datetime, timedelta
 import requests
 from environs import Env
 
-env = Env()
-env.read_env()
 CART_PREFIX = "cart_"
-CLIENT_ID = env.str("CLIENT_ID")
-CLIENT_SECRET = env.str("CLIENT_SECRET")
+
+
 TOKEN_EXPIRES = datetime.now()
 TOKEN_STORE = ""
 
@@ -25,6 +23,10 @@ def get_store_token(client_id, client_secret):
 
 
 def get_headers():
+    env = Env()
+    env.read_env()
+    CLIENT_ID = env.str("CLIENT_ID")
+    CLIENT_SECRET = env.str("CLIENT_SECRET")
     global TOKEN_EXPIRES
     global TOKEN_STORE
     if datetime.now() >= TOKEN_EXPIRES:

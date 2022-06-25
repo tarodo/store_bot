@@ -6,6 +6,9 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (CallbackQueryHandler, CommandHandler, Filters,
                           MessageHandler, Updater)
 
+env = Env()
+env.read_env()
+
 from moltin import (add_product_to_cart, create_customer,
                     delete_item_from_cart, get_cart, get_cart_items,
                     get_cart_sum, get_photo_url, get_product, get_products)
@@ -19,7 +22,7 @@ def keyboard_maker(buttons, number):
         keyboard.append(
             [
                 InlineKeyboardButton(button["name"], callback_data=button["id"])
-                for button in buttons[num : num + number]
+                for button in buttons[num: num + number]
             ]
         )
     return keyboard
@@ -178,9 +181,6 @@ def handle_users_reply(db, bot, update):
 
 
 if __name__ == "__main__":
-    env = Env()
-    env.read_env()
-
     bot_token = env.str("TELEGRAM_BOT_TOKEN")
 
     REDIS_URL = env.str("REDIS_URL")
